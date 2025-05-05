@@ -9,6 +9,6 @@ namespace JwtTokenProject.Models
             
         }
 
-        public DbSet<User> Users { get; set; }
+        public DbSet<AppUserInfo> AppUserInfos { get; set; }
     }
 }
