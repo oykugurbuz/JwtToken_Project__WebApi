@@ -86,12 +86,26 @@ public class AuthController : ControllerBase
         return Ok(new { UserName = userName });
     }
 
+    [Authorize(Roles ="admin")]
+    [HttpGet("admin-only")]
 
+    public IActionResult AdminOnly()
+    {
+        var userClaims = User.Claims;
+        var userType = userClaims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+        return Ok(new { UserType = userType });
+    }
     private string GenerateJwtToken(string username)
     {
+        var user = _context.AppUserInfos.FirstOrDefault(u => u.UserName == username);
+        if (user == null)
+        {
+            throw new ArgumentException("Kullanıcı bulunamadı.");
+        }
         var claims = new List<Claim>
     {
             new Claim(ClaimTypes.Name, username),
+            new Claim(ClaimTypes.Role, user.UserTypeName ?? "user"),
 
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };

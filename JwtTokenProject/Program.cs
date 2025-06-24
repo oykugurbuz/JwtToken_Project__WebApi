@@ -96,7 +96,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Global exception handling
+
 app.UseExceptionHandler("/error");
 app.UseHttpsRedirection();
 

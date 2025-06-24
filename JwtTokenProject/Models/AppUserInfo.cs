@@ -5,7 +5,7 @@ namespace JwtTokenProject.Models
 {
     public class AppUserInfo
     {
-        public int Id { get; set; }
+        public int Id { get; set; } 
         public string? UserName { get; set; } //username
         [DataType(DataType.Password)]
         public string? Password { get; set; }
