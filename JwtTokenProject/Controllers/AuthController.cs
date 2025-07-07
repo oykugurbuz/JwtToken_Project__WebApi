@@ -30,6 +30,7 @@ public class AuthController : ControllerBase
         {
             UserName = signup.UserName,
             Password = signup.Password,
+            IdentityNumber = signup.IdentityNumber,
             Email = signup.Email,
             IsActive = true,
             FailedAttempt = 0,

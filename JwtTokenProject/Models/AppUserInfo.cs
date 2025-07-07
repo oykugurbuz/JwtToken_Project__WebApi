@@ -7,6 +7,8 @@ namespace JwtTokenProject.Models
     {
         public int Id { get; set; } 
         public string? UserName { get; set; } //username
+
+        public long IdentityNumber { get; set; }
         [DataType(DataType.Password)]
         public string? Password { get; set; }
         public string? UserTypeName { get; set; } //admin-user vs
