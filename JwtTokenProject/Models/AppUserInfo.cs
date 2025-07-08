@@ -3,11 +3,17 @@ using System.ComponentModel.DataAnnotations;
 
 namespace JwtTokenProject.Models
 {
+    [Index(nameof(UserName), IsUnique = true)]
+    [Index(nameof(IdentityNumber), IsUnique = true)]
+    [Index(nameof(Email), IsUnique = true)]
     public class AppUserInfo
     {
-        public int Id { get; set; } 
+        public int Id { get; set; }
+        
+        [Required]
         public string? UserName { get; set; } //username
 
+        [Required]
         public long IdentityNumber { get; set; }
         [DataType(DataType.Password)]
         public string? Password { get; set; }
@@ -20,6 +26,7 @@ namespace JwtTokenProject.Models
 
         public bool RememberMe { get; set; }
         [EmailAddress]
+        [Required]
         public string? Email { get; set; }
 
         public string? Token { get; set; }

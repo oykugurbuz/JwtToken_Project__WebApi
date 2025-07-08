@@ -24,7 +24,15 @@ public class AuthController : ControllerBase
     {
         if (_context.AppUserInfos.Any(u => u.UserName == signup.UserName))
         {
-            return BadRequest(new { message = "Kullanıcı adı zaten var!" });
+            return BadRequest(new { message = "Bu kullanıcı adı zaten kayıtlı!" });
+        }
+        if(_context.AppUserInfos.Any(u=> u.IdentityNumber == signup.IdentityNumber))
+        {
+            return BadRequest(new { message = "Bu tc.kimlik numarası zaten kayıtlı!" });
+        }
+        if(_context.AppUserInfos.Any(u=> u.Email == signup.Email))
+        {
+            return BadRequest(new { message = "Bu e-posta adresi zaten kayıtlı!" });
         }
         var user = new AppUserInfo
         {
