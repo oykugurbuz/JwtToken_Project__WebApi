@@ -14,8 +14,9 @@ namespace JwtTokenProject.Models
         public string? UserName { get; set; } //username
 
         [Required]
-        public long IdentityNumber { get; set; }
+        public long? IdentityNumber { get; set; }
         [DataType(DataType.Password)]
+        [Required]
         public string? Password { get; set; }
         public string? UserTypeName { get; set; } //admin-user vs
 
@@ -30,5 +31,6 @@ namespace JwtTokenProject.Models
         public string? Email { get; set; }
 
         public string? Token { get; set; }
+        public int AuthorityLevel { get; set; }
     }
 }

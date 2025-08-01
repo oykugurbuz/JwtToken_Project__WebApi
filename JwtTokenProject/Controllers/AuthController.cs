@@ -22,18 +22,30 @@ public class AuthController : ControllerBase
     [HttpPost("signup")]
     public IActionResult Signup([FromBody] SignupModel signup)
     {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState
+                .Where(x => x.Value.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+                );
+            return BadRequest(new { message = "Geçersiz giriş.", errors });
+        }
+
         if (_context.AppUserInfos.Any(u => u.UserName == signup.UserName))
         {
             return BadRequest(new { message = "Bu kullanıcı adı zaten kayıtlı!" });
         }
-        if(_context.AppUserInfos.Any(u=> u.IdentityNumber == signup.IdentityNumber))
+        if (_context.AppUserInfos.Any(u => u.IdentityNumber == signup.IdentityNumber))
         {
             return BadRequest(new { message = "Bu tc.kimlik numarası zaten kayıtlı!" });
         }
-        if(_context.AppUserInfos.Any(u=> u.Email == signup.Email))
+        if (_context.AppUserInfos.Any(u => u.Email == signup.Email))
         {
             return BadRequest(new { message = "Bu e-posta adresi zaten kayıtlı!" });
         }
+
         var user = new AppUserInfo
         {
             UserName = signup.UserName,
@@ -45,7 +57,8 @@ public class AuthController : ControllerBase
             LastLoginDate = null,
             RememberMe = false,
             UserTypeName = "user",
-            Token = null
+            Token = null,
+            AuthorityLevel = signup.AuthorityLevel ?? 4 // Varsayılan olarak 4 (user) olarak ayarlanıyor
         };
 
         _context.AppUserInfos.Add(user);
@@ -114,11 +127,17 @@ public class AuthController : ControllerBase
         var claims = new List<Claim>
     {
             new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Role, user.UserTypeName ?? "user"),
-
+           // new Claim(ClaimTypes.Role, user.UserTypeName ?? "user"),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
-
+        if(user.IdentityNumber != null)
+        {
+            claims.Add(new Claim("IdentityNumber", user.IdentityNumber.Value.ToString()));
+        }
+        if(user.AuthorityLevel != null)
+        {
+            claims.Add(new Claim("AuthorityLevel", user.AuthorityLevel.ToString()));
+        }
         var secretKey = _configuration["Jwt:Key"];
         if (string.IsNullOrEmpty(secretKey))
         {
