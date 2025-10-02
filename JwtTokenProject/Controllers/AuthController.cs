@@ -5,6 +5,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using Azure.Core;
+using System.Text.Json;
+using JwtTokenProject.Hubs;
+using Microsoft.AspNetCore.SignalR;
+using JwtTokenProject.Services;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -12,10 +19,16 @@ public class AuthController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly ApplicationDbContext _context;
-    public AuthController(IConfiguration configuration, ApplicationDbContext context)
+    private readonly IHubContext<UserHub> _hubContext;
+    private readonly INotificationServices _notificationServices;
+    private readonly IHubContext<ExcelProgressBarHub> _excelProgressBarHub;
+    public AuthController(IConfiguration configuration, ApplicationDbContext context,IHubContext<UserHub> hubContext,INotificationServices notificationServices,IHubContext<ExcelProgressBarHub> excelProgressBarHub)
     {
         _configuration = configuration;
         _context = context;
+        _hubContext = hubContext;
+        _notificationServices = notificationServices;
+        _excelProgressBarHub = excelProgressBarHub;
     }
 
     [AllowAnonymous]
@@ -64,14 +77,116 @@ public class AuthController : ControllerBase
         _context.AppUserInfos.Add(user);
         _context.SaveChanges();
 
+        // SignalR ile yeni kullanıcı kaydı bildirimi gönder
+
+         _hubContext.Clients.All.SendAsync("CreatedNewUser", new
+        {
+            userName = user.UserName,
+            email = user.Email
+        }); // kullanıcı adı  gönderiyoruz
+        // E-posta bildirim servisini kullanarak hoş geldiniz e-postası gönder
+
+        _notificationServices.SendWelcomeEmailAsync(user.Email ?? "none", user.UserName?? "noneUserName");
         return Ok(new { message = "Kullanıcı başarıyla kaydedildi!" });
 
 
     }
 
-    // Kullanıcı girişi (Login) 
+    
 
-    [AllowAnonymous]
+[AllowAnonymous]
+[HttpPost("signup-bulk")]
+public async Task<IActionResult> SignupBulk()
+{
+        //***List<SignupModel> tipinde veri gönderdiğinde ASP.NET Core otomatik olarak model validasyonu yapıyor
+        //ve JSON içinde tek bir item bile invalid ise metoduna girmeden 400 BadRequest dönüyor.Çözüm:
+        //[FromBody] List<SignupModel> users kullanmak yerine HttpContext.Request.Body okuyup jsonı manuel deserialize etmek
+        using var reader = new StreamReader(Request.Body);
+        var body = await reader.ReadToEndAsync();
+
+    if (string.IsNullOrEmpty(body))
+        return BadRequest("Gönderilen veri boş.");
+
+    List<SignupModel> users;
+    try
+    {
+        users = JsonSerializer.Deserialize<List<SignupModel>>(body, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+    }
+    catch
+    {
+        return BadRequest("Gönderilen JSON geçersiz.");
+    }
+
+    if (users == null || !users.Any())
+        return BadRequest("Gönderilen liste boş.");
+
+    var results = new List<UserImportResult>();
+       
+    for (int i = 0; i < users.Count; i++)
+    {
+        var signup = users[i];
+        var userResult = new UserImportResult
+        {
+            RowNumber = i + 2,
+            User = signup,
+            Messages = new List<string>()
+        };
+
+    
+        var context = new ValidationContext(signup);
+        var validationResults = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(signup, context, validationResults, true))
+            userResult.Messages.AddRange(validationResults.Select(v => v.ErrorMessage));
+
+       
+        if (_context.AppUserInfos.Any(u => u.UserName == signup.UserName))
+            userResult.Messages.Add("Bu kullanıcı adı zaten kayıtlı!");
+        if (_context.AppUserInfos.Any(u => u.IdentityNumber == signup.IdentityNumber))
+            userResult.Messages.Add("Bu TC kimlik numarası zaten kayıtlı!");
+        if (_context.AppUserInfos.Any(u => u.Email == signup.Email))
+            userResult.Messages.Add("Bu e-posta adresi zaten kayıtlı!");
+
+       
+        if (!userResult.Messages.Any())
+        {   
+            var user = new AppUserInfo
+            {
+                UserName = signup.UserName,
+                Password = signup.Password,
+                IdentityNumber = signup.IdentityNumber,
+                Email = signup.Email,
+                IsActive = true,
+                FailedAttempt = 0,
+                LastLoginDate = null,
+                RememberMe = false,
+                UserTypeName = "user",
+                Token = null,
+                AuthorityLevel = signup.AuthorityLevel ?? 4
+            };
+            _context.AppUserInfos.Add(user);
+               
+            }
+
+        results.Add(userResult);
+
+            int percent = ((i + 1) * 100) / users.Count;
+            await _excelProgressBarHub.Clients.All.SendAsync("ExcelImportProgress", percent);
+            
+            await Task.Delay(50); 
+        }
+
+    _context.SaveChanges(); // yalnızca hatasızlar DB’ye eklenir
+
+    return Ok(results); 
+}
+
+
+// Kullanıcı girişi (Login) 
+
+[AllowAnonymous]
     [HttpPost("login")]
     [Consumes("application/json")]
     public IActionResult Login([FromBody] LoginRequest login)

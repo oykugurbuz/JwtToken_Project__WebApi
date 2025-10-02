@@ -1,4 +1,5 @@
 using JwtTokenProject.Models;
+using JwtTokenProject.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -11,13 +12,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-// CORS  
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
-                      builder => builder.AllowAnyOrigin()
-                                        .AllowAnyMethod()
-                                        .AllowAnyHeader());
+        policy => policy
+            .WithOrigins("http://localhost:5254") // izin verilen originler
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 builder.Services.AddControllers();
@@ -91,9 +93,11 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+//SignalR
+builder.Services.AddSignalR();
 
-
-
+//Notification Service
+builder.Services.AddScoped<INotificationServices, NotificationServices>();
 var app = builder.Build();
 
 
@@ -116,6 +120,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+//Hubs
+app.MapHub<JwtTokenProject.Hubs.UserHub>("/UserHub");
+app.MapHub<JwtTokenProject.Hubs.ExcelProgressBarHub>("/ExcelProgressBarHub");
 app.MapControllers();
 app.Run();
