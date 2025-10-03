@@ -4,6 +4,8 @@ Bu proje, JWT (JSON Web Token) kullanarak kullanıcı kimlik doğrulama (authent
 
 Swagger arayüzü ile test edilebilir ve başka UI projeleri (örneğin WebAppDemo_update) ile entegre çalışacak şekilde tasarlanmıştır.
 
+Ayrıca SignalR entegrasyonu sayesinde gerçek zamanlı özellikler desteklenmektedir.
+
 ## Özellikler
 
 - Kullanıcı Kayıt (Signup) işlemi
@@ -12,7 +14,16 @@ Swagger arayüzü ile test edilebilir ve başka UI projeleri (örneğin WebAppDe
 - Rol bazlı yetkilendirme (`admin` örneği)
 - Swagger ile API dökümantasyonu
 - Token doğrulama & süresi ayarlama (ExpireMinutes)
-- Token cookie'de veya header’da kullanılabilir
+- Token cookie'de veya header’da kullanılabilir.
+- SignalR entegrasyonu ile gerçek zamanlı özellikler:
+
+- - Yeni kullanıcı oluşturulduğunda real-time bildirim
+
+- - Yeni kullanıcı için e-posta bildirimi (notification service)
+
+- - Excel import işlemlerinde progress bar (real-time)
+
+- - Online kullanıcı sayacı
 
 ## Kullanılan Teknolojiler
 
@@ -21,6 +32,7 @@ Swagger arayüzü ile test edilebilir ve başka UI projeleri (örneğin WebAppDe
 - SQL Server (LocalDB)
 - JWT Token (Microsoft.IdentityModel.Tokens & System.IdentityModel.Tokens.Jwt)
 - Role tabanlı `[Authorize]` sistemi
+- SignalR (real-time iletişim)
 
 ## JWT Sistemi
 
@@ -33,6 +45,8 @@ Swagger arayüzü ile test edilebilir ve başka UI projeleri (örneğin WebAppDe
   - `Jwt:Key` → Gizli anahtar
   - `Jwt:Issuer`, `Jwt:Audience` → Token geçerlilik kaynakları
   - `Jwt:ExpireMinutes` → Süre tanımı (örn. 30 dk)
+
+
 
   ## Swagger ile API Dökümantasyonu
 
@@ -89,3 +103,15 @@ Admin yetkisine sahip kullanıcı giriş yapar.
 
 Erişim sağlanır.
 ![Admin authorize görseli](screenshots/admin_only_success.png)
+
+## SignalR Entegrasyonu
+
+Projede Hub sınıfları tanımlanmıştır:
+
+- UserHub → Yeni kullanıcı oluşturulduğunda tüm client’lara bildirim gönderir.
+
+- ExcelProgressBarHub → Excel import işlemlerinde ilerleme yüzdesini gerçek zamanlı client’lara iletir.
+
+- UserCountHub → Online kullanıcı sayısını tutar ve günceller.
+
+Bu hub’lar MVC UI projeleriyle entegre çalışır. Örneğin, kullanıcı yeni kayıt olduğunda ekranda “Yeni kullanıcı katıldı” şeklinde real-time bir alert çıkar.
